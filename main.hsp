@@ -1,0 +1,102 @@
+
+result=""
+file_list=""
+isWrote=1
+
+screen 0,400,600
+print "読み込むHSファイルのある\nフォルダのファイルを開いてください\nたぶんC:\\hsp36\\hsphelpにあるよ"
+dialog "hs",16,"HSファイルを開いてください"
+if stat=0:end
+title "読み込むHSファイルを選択"
+chdir getpath(refstr,32)
+dirlist file_list_Default,"*.*",0
+notesel file_list_Default
+dim is_file_use,noteinfo(0)
+objsize 150,20
+color 255,255,255:boxf:pos 0,0
+repeat noteinfo(0)
+	noteget tmp,cnt
+	if ginfo_cy>=540:pos ginfo_cx+150,0
+	chkbox tmp,is_file_use(cnt)
+	loop
+button "決定",*main
+stop
+*main
+	foreach is_file_use
+		if is_file_use(cnt)=1{
+			noteget tmp,cnt
+			file_list=file_list+tmp+"\n"
+		}
+	loop
+	noteunsel
+	cls
+	split file_list,"\n",files
+	notesel HS_file 
+	repeat length(files)-1
+		noteload files(cnt)
+		repeat noteinfo(0)
+			noteget tmp,cnt
+			if tmp="%index"{
+				if isWrote=0:gosub *write
+				noteget prefix,cnt+1
+				noteget name,cnt+2
+				if instr(result,0,"'"+name+"'")!=-1{
+					repeat
+						tmp=name+"-"+str(cnt+1)
+						if instr(result,,tmp) =-1{
+							name=tmp:break
+						}
+					loop	
+					
+				}
+				isWrote=0
+			}
+			if tmp="%prm"{
+				noteget prm,cnt+1
+				gosub *prmsplit
+				gosub *write
+			}
+			loop
+	loop
+	title "コピーしてsnippetsに貼り付けてください"
+	mesbox result,400,600
+	stop
+
+*write
+	result=result+"  '"+name+"':\n"
+	result=result+"    'prefix': '"+prefix+"'\n"
+	if prm="" :result=result+"    'body': '"+prefix+"'\n":return
+	if strmid(prm,0,1)="("{
+		result=result+"    'body': '"+prefix+prm+"'\n"
+	}else{
+		result=result+"    'body': '"+prefix+" "+prm+"'\n"
+	}
+	isWrote=1
+	return
+
+
+*prmsplit
+	sdim prm_split
+	if strmid(prm,0,1)="("{
+		strrep prm,"(",""
+		strrep prm,")",""
+		split prm, "," ,prm_split		
+		gosub *addprm
+		prm="("+prm+")"
+	}else{
+		split prm, "," ,prm_split
+		gosub *addprm
+	}
+return
+
+
+*addprm
+	repeat length(prm_split)
+		prm_split(cnt)="${"+str(cnt+1)+":"+prm_split(cnt)+"}"
+	loop
+	prm=""
+	foreach prm_split
+		prm=prm+prm_split(cnt)+","
+	loop
+	prm=strtrim(prm,2,',')
+	return
